@@ -234,10 +234,24 @@ output.appendChild(table)
 exportBtn.addEventListener('click', ()=>{
   if(!latestTableData.length) return alert('データがありません')
 
-  const header = 'Group,Numbers,Max,Round'
-  const body = latestTableData.map(r=>
-    `${r.group},"${r.numbers.join(' ')}",${r.max},${r.round}`
-  ).join('\n')
+// ★ここから変更（CSVもセル分割）
+const header = ['Group','n1','n2','n3','n4','n5','n6','n7','Max','Round'].join(',')
+
+const body = latestTableData.map(r=>{
+  let row = [r.group]
+
+  if(Array.isArray(r.numbers)){
+    row.push(...r.numbers)
+  } else {
+    // フォールバック
+    row.push('', '', '', '', '', '', '')
+  }
+
+  row.push(r.max, r.round)
+
+  return row.join(',')
+}).join('\n')
+// ★ここまで変更
 
   const csv = header + '\n' + body
   const blob = new Blob([csv], {type:'text/csv'})
