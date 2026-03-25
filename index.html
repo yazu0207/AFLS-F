@@ -69,15 +69,16 @@ function readFile(file){
 }
 
 function generateAFLS(){
-  try{
-    // 1〜37
-    const pool = [...Array(37).keys()].map(x=>x+1)
-
-    // シャッフル
-    for(let i=pool.length-1;i>0;i--){
-      const j = Math.floor(Math.random()*(i+1))
-      ;[pool[i],pool[j]]=[pool[j],pool[i]]
+  const rows = []
+  for(let i=0;i<5;i++){
+    const nums = new Set()
+    while(nums.size < 7){
+      nums.add(Math.floor(Math.random()*37)+1)
     }
+    rows.push(Array.from(nums).sort((a,b)=>a-b))
+  }
+  return rows
+}
 
     // 35個抽出
     const selected = pool.slice(0,35)
