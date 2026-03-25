@@ -191,35 +191,18 @@ runBtn.addEventListener('click', async () => {
     return {group:`G${i+1}`, numbers:g, max, round}
   })
 
-// ★ここから修正：表形式（セル分割）
-const table = document.createElement('table')
+  const table = document.createElement('table')
+  table.innerHTML = '<tr><th>Group</th><th>Numbers</th><th>一致最大</th><th>回</th></tr>'
 
-// ヘッダ
-let headerHTML = '<tr><th>Group</th>'
-for(let i=1;i<=7;i++){
-  headerHTML += `<th>n${i}</th>`
-}
-headerHTML += '<th>一致最大</th><th>回</th></tr>'
-table.innerHTML = headerHTML
-
-// 行
-latestTableData.forEach(r=>{
-  const tr = document.createElement('tr')
-
-  let rowHTML = `<td>${r.group}</td>`
-  r.numbers.forEach((n,i)=>{
-    rowHTML += `<td data-label="n${i+1}">${n}</td>`
+  latestTableData.forEach(r=>{
+    const tr = document.createElement('tr')
+    tr.innerHTML = `<td>${r.group}</td><td>${r.numbers.join(', ')}</td><td>${r.max}</td><td>${r.round}</td>`
+    table.appendChild(tr)
   })
-  rowHTML += `<td data-label="一致最大">${r.max}</td>`
-  rowHTML += `<td data-label="回">${r.round}</td>`
 
-  tr.innerHTML = rowHTML
-  table.appendChild(tr)
+  output.innerHTML = ''
+  output.appendChild(table)
 })
-
-output.innerHTML = ''
-output.appendChild(table)
-// ★ここまで修正
 
 // CSV出力
 exportBtn.addEventListener('click', ()=>{
