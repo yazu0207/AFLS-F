@@ -68,17 +68,39 @@ function readFile(file){
   })
 }
 
+// ★ここから修正：段階生成ロジック
 function generateAFLS(){
-  const rows = []
-  for(let i=0;i<5;i++){
-    const nums = new Set()
-    while(nums.size < 7){
-      nums.add(Math.floor(Math.random()*37)+1)
-    }
-    rows.push(Array.from(nums).sort((a,b)=>a-b))
+  // ① 1〜37からランダムに35個抽出
+  const pool = [...Array(37).keys()].map(x=>x+1)
+  for(let i=pool.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1))
+    ;[pool[i],pool[j]]=[pool[j],pool[i]]
   }
-  return rows
+  const selected = pool.slice(0,35)
+
+  while(true){
+    // ② 35個をランダム並び替え → 5×7に分割
+    const shuffled = [...selected]
+    for(let i=shuffled.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1))
+      ;[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]]
+    }
+
+    const rows = []
+    for(let i=0;i<5;i++){
+      rows.push(shuffled.slice(i*7, i*7+7))
+    }
+
+    // ③ 重複チェック（全体で35ユニークか）
+    const flat = rows.flat()
+    const unique = new Set(flat)
+    if(unique.size !== 35) continue
+
+    // ④ 各行を昇順にソートして返す
+    return rows.map(r => r.sort((a,b)=>a-b))
+  }
 }
+// ★ここまで修正
 
 genAflsBtn.addEventListener('click', ()=>{
   const rows = generateAFLS()
