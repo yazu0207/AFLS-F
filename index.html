@@ -12,6 +12,21 @@ button { padding:12px 16px; margin:5px; font-size:16px; border-radius:8px; borde
 @media (max-width: 768px){ .container{ flex-direction:column; gap:10px; } }
 .block{ margin-bottom:20px; }
 table { border-collapse: collapse; margin:10px 0; width:100%; }
+
+/* ★スマホ対応 */
+@media (max-width: 768px){
+  table, thead, tbody, th, td, tr { display: block; }
+  tr { margin-bottom: 10px; border:1px solid #333; padding:5px }
+  th { display:none }
+  td { text-align:left; padding:5px; border:none; position:relative }
+  td::before {
+    content: attr(data-label);
+    font-weight:bold;
+    display:block;
+    margin-bottom:3px;
+    color:#9f9;
+  }
+}
 td, th { border:1px solid #333; padding:6px; text-align:center; }
 th { background:#222 }
 .hot { background:#8b0000 }
@@ -148,55 +163,24 @@ function parsePastCSV(text){
 
 function renderHeatmap(cells){
   heatmapDiv.innerHTML = ''
+  // ★表形式（セル分割＋列ヘッダ）
   const table = document.createElement('table')
-  for(let y=0;y<5;y++){
-    const tr=document.createElement('tr')
-    for(let x=0;x<7;x++){
-      const td=document.createElement('td')
-      const c = cells.find(v=>v.x===x && v.y===y)
-      if(c){ td.textContent = c.rank; td.className = c.zone === 'HOT' ? 'hot':'cold' }
-      tr.appendChild(td)
-    }
-    table.appendChild(tr)
-  }
-  heatmapDiv.appendChild(table)
-}
 
-runBtn.addEventListener('click', async () => {
-  if (!aflsInput.files[0]) return alert('AFLS CSVを選択してください')
+  // ヘッダ作成
+  let headerHTML = '<tr><th>Group</th>'
+  for(let i=1;i<=7;i++){ headerHTML += `<th>n${i}</th>` }
+  headerHTML += '<th>一致最大</th><th>回</th></tr>'
+  table.innerHTML = headerHTML
 
-  const aflsText = await readFile(aflsInput.files[0])
-  let heatText = heatmapInput.files[0] ? await readFile(heatmapInput.files[0]) : loadHeatmap()
-  if(!heatText) return alert('ヒートマップCSVが未設定です')
-
-  const result = reconstructAFLS(aflsText, heatText)
-  renderHeatmap(result.heatmap)
-
-  let pastData = []
-  if(pastInput.files[0]){
-    const pastText = await readFile(pastInput.files[0])
-    pastData = parsePastCSV(pastText)
-  }
-
-  latestTableData = result.groups.map((g,i)=>{
-    let max = ''
-    let round = ''
-    if(pastData.length){
-      const set = new Set(g)
-      pastData.forEach((p,idx)=>{
-        const cnt = p.filter(n=>set.has(n)).length
-        if(cnt >= max){ max = cnt; round = idx+1 }
-      })
-    }
-    return {group:`G${i+1}`, numbers:g, max, round}
-  })
-
-  const table = document.createElement('table')
-  table.innerHTML = '<tr><th>Group</th><th>Numbers</th><th>一致最大</th><th>回</th></tr>'
-
+  // 行作成
   latestTableData.forEach(r=>{
     const tr = document.createElement('tr')
-    tr.innerHTML = `<td>${r.group}</td><td>${r.numbers.join(', ')}</td><td>${r.max}</td><td>${r.round}</td>`
+
+    let rowHTML = `<td>${r.group}</td>`
+    r.numbers.forEach(n=>{ rowHTML += `<td>${n}</td>` })
+    rowHTML += `<td>${r.max}</td><td>${r.round}</td>`
+
+    tr.innerHTML = rowHTML
     table.appendChild(tr)
   })
 
