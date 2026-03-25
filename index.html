@@ -102,9 +102,21 @@ function generateAFLS(){
 }
 // ★ここまで修正
 
+// ★ここから修正：CSVフォーマット（ヘッダ＋行ラベル付き）
 genAflsBtn.addEventListener('click', ()=>{
   const rows = generateAFLS()
-  const csv = rows.map(r=>r.join(',')).join('\n')
+
+  // ヘッダ作成
+  const header = ['A-data','n1','n2','n3','n4','n5','n6','n7'].join(',')
+
+  // 本文作成（m1〜m5の行ラベル付き）
+  const body = rows.map((r,i)=>{
+    return [`m${i+1}`, ...r].join(',')
+  }).join('
+')
+
+  const csv = header + '
+' + body
 
   const blob = new Blob([csv], {type:'text/csv'})
   const url = URL.createObjectURL(blob)
@@ -114,7 +126,8 @@ genAflsBtn.addEventListener('click', ()=>{
   a.click()
   URL.revokeObjectURL(url)
 })
-
+// ★ここまで修正
+  
 function saveHeatmap(text){ localStorage.setItem('heatmapCSV', text) }
 function loadHeatmap(){ return localStorage.getItem('heatmapCSV') }
 
