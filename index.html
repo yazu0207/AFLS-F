@@ -195,11 +195,11 @@ runBtn.addEventListener('click', async () => {
 const table = document.createElement('table')
 
 // ヘッダ作成
-let headerHTML = '<tr><th>Group</th>'
+let headerHTML = '<tr><th>Gp</th>'
 for(let i=1;i<=7;i++){
   headerHTML += `<th>n${i}</th>`
 }
-headerHTML += '<th>一致最大</th><th>回</th></tr>'
+headerHTML += '<th>Max</th><th>回</th></tr>'
 table.innerHTML = headerHTML
 
 // 行作成（安全対応）
