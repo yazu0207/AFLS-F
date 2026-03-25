@@ -17,6 +17,7 @@ td { width:14%; height:40px; text-align:center; border:1px solid #333; font-size
 .cold { background:#1c2a44 }
 #heatmap, #output { overflow-x:auto; }
 #output p{ background:#111; padding:8px; border-radius:6px; margin:5px 0; font-size:14px; }
+.status{font-size:12px;color:#9f9;}
 </style>
 </head>
 <body>
@@ -25,22 +26,23 @@ td { width:14%; height:40px; text-align:center; border:1px solid #333; font-size
 
 <div class="container">
   <div class="block">
-    <h3>AFLS出力データ</h3>
+    <h3>AFLS出力データ <span id="aflsStatus" class="status">未読込</span></h3>
     <input type="file" id="aflsCsv">
-    <button id="genAfls">5x7自動生成</button>
   </div>
 
   <div class="block">
-    <h3>ヒートマップデータ</h3>
+    <h3>ヒートマップデータ <span id="heatStatus" class="status">未読込</span></h3>
     <input type="file" id="heatmapCsv">
   </div>
 
   <div class="block">
-    <h3>過去当選データ</h3>
+    <h3>過去当選データ <span id="pastStatus" class="status">未読込</span></h3>
     <input type="file" id="pastCsv">
   </div>
 </div>
 
+<!-- ボタン配置変更 -->
+<button id="genAfls">5x7自動生成</button>
 <button id="runBtn">再構築＋照合</button>
 
 <h3>ヒートマップ</h3>
@@ -55,10 +57,30 @@ import { reconstructAFLS } from './afls3_reconstructor.js'
 const aflsInput = document.getElementById('aflsCsv')
 const heatmapInput = document.getElementById('heatmapCsv')
 const pastInput = document.getElementById('pastCsv')
+
+const aflsStatus = document.getElementById('aflsStatus')
+const heatStatus = document.getElementById('heatStatus')
+const pastStatus = document.getElementById('pastStatus')
+
 const heatmapDiv = document.getElementById('heatmap')
 const output = document.getElementById('output')
 const runBtn = document.getElementById('runBtn')
 const genAflsBtn = document.getElementById('genAfls')
+
+// 状態表示
+function updateStatus(input, el){
+  if(input.files.length > 0){
+    el.textContent = '読込済'
+  }
+}
+
+[aflsInput, heatmapInput, pastInput].forEach((inp, i)=>{
+  inp.addEventListener('change', ()=>{
+    if(inp === aflsInput) updateStatus(inp, aflsStatus)
+    if(inp === heatmapInput) updateStatus(inp, heatStatus)
+    if(inp === pastInput) updateStatus(inp, pastStatus)
+  })
+})
 
 function readFile(file){
   return new Promise(r=>{
@@ -68,9 +90,8 @@ function readFile(file){
   })
 }
 
-// ★ここから修正：段階生成ロジック
+// ★5x7生成ロジック
 function generateAFLS(){
-  // ① 1〜37からランダムに35個抽出
   const pool = [...Array(37).keys()].map(x=>x+1)
   for(let i=pool.length-1;i>0;i--){
     const j = Math.floor(Math.random()*(i+1))
@@ -79,7 +100,6 @@ function generateAFLS(){
   const selected = pool.slice(0,35)
 
   while(true){
-    // ② 35個をランダム並び替え → 5×7に分割
     const shuffled = [...selected]
     for(let i=shuffled.length-1;i>0;i--){
       const j = Math.floor(Math.random()*(i+1))
@@ -91,39 +111,39 @@ function generateAFLS(){
       rows.push(shuffled.slice(i*7, i*7+7))
     }
 
-    // ③ 重複チェック（全体で35ユニークか）
     const flat = rows.flat()
-    const unique = new Set(flat)
-    if(unique.size !== 35) continue
+    if(new Set(flat).size !== 35) continue
 
-    // ④ 各行を昇順にソートして返す
     return rows.map(r => r.sort((a,b)=>a-b))
   }
 }
-// ★ここまで修正
 
-// ★ここから修正：CSVフォーマット（ヘッダ＋行ラベル付き）
+// ★生成＋自動セット
 genAflsBtn.addEventListener('click', ()=>{
   const rows = generateAFLS()
 
   const header = ['A-data','n1','n2','n3','n4','n5','n6','n7'].join(',')
-
-  const body = rows.map((r,i)=>{
-    return [`m${i+1}`, ...r].join(',')
-  }).join('\n')
-
+  const body = rows.map((r,i)=>[`m${i+1}`, ...r].join(',')).join('\n')
   const csv = header + '\n' + body
 
   const blob = new Blob([csv], {type:'text/csv'})
+
+  // ダウンロード
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
   a.download = 'afls_generated.csv'
   a.click()
   URL.revokeObjectURL(url)
+
+  // ★inputに自動セット
+  const file = new File([blob], 'afls_generated.csv', {type:'text/csv'})
+  const dt = new DataTransfer()
+  dt.items.add(file)
+  aflsInput.files = dt.files
+  aflsStatus.textContent = '読込済（自動生成）'
 })
-// ★ここまで修正
-  
+
 function saveHeatmap(text){ localStorage.setItem('heatmapCSV', text) }
 function loadHeatmap(){ return localStorage.getItem('heatmapCSV') }
 
