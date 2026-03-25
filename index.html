@@ -199,7 +199,6 @@ latestTableData.forEach(r=>{
   tr.innerHTML = `<td>${r.group}</td><td>${r.numbers.join(', ')}</td><td>${r.max}</td><td>${r.round}</td>`
   table.appendChild(tr)
 })
-
 // CSV出力
 exportBtn.addEventListener('click', ()=>{
   if(!latestTableData.length) return alert('データがありません')
