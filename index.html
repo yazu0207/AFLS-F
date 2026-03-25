@@ -191,34 +191,14 @@ runBtn.addEventListener('click', async () => {
     return {group:`G${i+1}`, numbers:g, max, round}
   })
 
-// ★ここから変更（セル分割版）
 const table = document.createElement('table')
+table.innerHTML = '<tr><th>Group</th><th>Numbers</th><th>一致最大</th><th>回</th></tr>'
 
-// ヘッダ作成
-let headerHTML = '<tr><th>Gp</th>'
-for(let i=1;i<=7;i++){
-  headerHTML += `<th>n${i}</th>`
-}
-headerHTML += '<th>Max</th><th>回</th></tr>'
-table.innerHTML = headerHTML
-
-// 行作成
 latestTableData.forEach(r=>{
   const tr = document.createElement('tr')
-
-  let rowHTML = `<td>${r.group}</td>`
-
-  // 数字を1セルずつ
-  r.numbers.forEach(n=>{
-    rowHTML += `<td>${n}</td>`
-  })
-
-  rowHTML += `<td>${r.max}</td><td>${r.round}</td>`
-
-  tr.innerHTML = rowHTML
+  tr.innerHTML = `<td>${r.group}</td><td>${r.numbers.join(', ')}</td><td>${r.max}</td><td>${r.round}</td>`
   table.appendChild(tr)
 })
-// ★ここまで変更
 
 // CSV出力
 exportBtn.addEventListener('click', ()=>{
