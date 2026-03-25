@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AFLS-ultimate</title>
+<style>
+body { font-family: sans-serif; background:#0b1020; color:#fff; padding:15px; }
+h2,h3{margin:10px 0}
+button { padding:12px 16px; margin:5px; font-size:16px; border-radius:8px; border:none; cursor:pointer; }
+.container{ display:flex; gap:40px; align-items:flex-start; }
+@media (max-width: 768px){ .container{ flex-direction:column; gap:10px; } }
+.block{ margin-bottom:20px; }
+table { border-collapse: collapse; margin:10px 0; width:100%; }
+td { width:14%; height:40px; text-align:center; border:1px solid #333; font-size:14px; }
+.hot { background:#8b0000 }
+.cold { background:#1c2a44 }
+#heatmap, #output { overflow-x:auto; }
+#output p{ background:#111; padding:8px; border-radius:6px; margin:5px 0; font-size:14px; }
+</style>
+</head>
+<body>
+
+<h2>AFLS-ultimate</h2>
+
+<div class="container">
+  <div class="block">
+    <h3>AFLS出力データ</h3>
+    <input type="file" id="aflsCsv">
+    <button id="genAfls">5x7自動生成</button>
+  </div>
+
+  <div class="block">
+    <h3>ヒートマップデータ</h3>
+    <input type="file" id="heatmapCsv">
+  </div>
+
+  <div class="block">
+    <h3>過去当選データ</h3>
+    <input type="file" id="pastCsv">
+  </div>
+</div>
+
+<button id="runBtn">再構築＋照合</button>
+
+<h3>ヒートマップ</h3>
+<div id="heatmap"></div>
+
+<h3>結果</h3>
+<div id="output"></div>
+
+<script type="module">
+import { reconstructAFLS } from './afls3_reconstructor.js'
+
+const aflsInput = document.getElementById('aflsCsv')
+const heatmapInput = document.getElementById('heatmapCsv')
+const pastInput = document.getElementById('pastCsv')
+const heatmapDiv = document.getElementById('heatmap')
+const output = document.getElementById('output')
+const runBtn = document.getElementById('runBtn')
+const genAflsBtn = document.getElementById('genAfls')
+
+function readFile(file){
+  return new Promise(r=>{
+    const fr = new FileReader()
+    fr.onload=e=>r(e.target.result)
+    fr.readAsText(file)
+  })
+}
+
+function generateAFLS(){
+  const rows = []
+  for(let i=0;i<5;i++){
+    const nums = new Set()
+    while(nums.size < 7){
+      nums.add(Math.floor(Math.random()*37)+1)
+    }
+    rows.push(Array.from(nums).sort((a,b)=>a-b))
+  }
+  return rows
+}
+
+genAflsBtn.addEventListener('click', ()=>{
+  const rows = generateAFLS()
+  const csv = rows.map(r=>r.join(',')).join('\n')
+
+  const blob = new Blob([csv], {type:'text/csv'})
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'afls_generated.csv'
+  a.click()
+  URL.revokeObjectURL(url)
+})
+
+function saveHeatmap(text){ localStorage.setItem('heatmapCSV', text) }
+function loadHeatmap(){ return localStorage.getItem('heatmapCSV') }
+
+function parsePastCSV(text){
+  return text.trim().split(/\r?\n/)
+    .map(r=>r.split(',').map(v=>Number(v.trim())))
+    .filter(r=>r.length>=7)
+    .map(r=>r.slice(-7))
+}
+
+function evaluate(groups, pastData){
+  const pastSets = pastData.map(r => new Set(r))
+
+  return groups.map((g, idx)=>{
+    const set = new Set(g)
+    let max = 0
+    let hitRound = ''
+
+    pastSets.forEach((p,i)=>{
+      let cnt = 0
+      set.forEach(n=>{ if(p.has(n)) cnt++ })
+      if(cnt >= max){ max = cnt; hitRound = `第${i+1}回` }
+    })
+
+    return { group: idx+1, numbers: g, max, round: hitRound }
+  })
+}
+
+function renderHeatmap(cells){
+  heatmapDiv.innerHTML = ''
+  const table = document.createElement('table')
+  for(let y=0;y<5;y++){
+    const tr=document.createElement('tr')
+    for(let x=0;x<7;x++){
+      const td=document.createElement('td')
+      const c = cells.find(v=>v.x===x && v.y===y)
+      if(c){ td.textContent = c.rank; td.className = c.zone === 'HOT' ? 'hot':'cold' }
+      tr.appendChild(td)
+    }
+    table.appendChild(tr)
+  }
+  heatmapDiv.appendChild(table)
+}
+
+runBtn.addEventListener('click', async () => {
+  try{
+    if (!aflsInput.files[0]) {
+      alert("AFLS CSVを選択してください")
+      return
+    }
+
+    const aflsText = await readFile(aflsInput.files[0])
+
+    let heatText = null
+
+    if(heatmapInput.files[0]){
+      heatText = await readFile(heatmapInput.files[0])
+      saveHeatmap(heatText)
+    } else {
+      heatText = loadHeatmap()
+      if(!heatText){
+        alert("ヒートマップCSVが未設定です")
+        return
+      }
+    }
+
+    const result = reconstructAFLS(aflsText, heatText)
+    renderHeatmap(result.heatmap)
+
+    let evalResult = null
+
+    if(pastInput.files[0]){
+      const pastText = await readFile(pastInput.files[0])
+      const pastData = parsePastCSV(pastText)
+      evalResult = evaluate(result.groups, pastData)
+    }
+
+    output.innerHTML = result.groups.map((g,i)=>{
+      let extra = ''
+      if(evalResult){
+        const e = evalResult[i]
+        extra = `｜一致最大: ${e.max} (${e.round})`
+      }
+      return `<p>G${i+1}: ${g.join(', ')} ${extra}</p>`
+    }).join('')
+
+  }catch(err){
+    console.error(err)
+    alert("エラーが発生しました。コンソールを確認してください")
+  }
+})
+</script>
+
+</body>
+</html>
