@@ -69,14 +69,47 @@ function readFile(file){
 }
 
 function generateAFLS(){
-  // 1〜37から35個を一度だけ使う
-  const pool = [...Array(37).keys()].map(x=>x+1)
+  try{
+    // 1〜37
+    const pool = [...Array(37).keys()].map(x=>x+1)
 
-  // シャッフル
-  for(let i=pool.length-1;i>0;i--){
-    const j = Math.floor(Math.random()*(i+1))
-    ;[pool[i],pool[j]]=[pool[j],pool[i]]
+    // シャッフル
+    for(let i=pool.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1))
+      ;[pool[i],pool[j]]=[pool[j],pool[i]]
+    }
+
+    // 35個抽出
+    const selected = pool.slice(0,35)
+
+    // 念のため重複チェック
+    const uniqueCheck = new Set(selected)
+    if(uniqueCheck.size !== 35){
+      throw new Error('重複エラー')
+    }
+
+    // 5×7に分割（ここは安全に）
+    const rows = []
+    for(let i=0;i<5;i++){
+      const start = i*7
+      const row = selected.slice(start, start+7)
+
+      // 万一不足時の保険
+      if(row.length < 7){
+        console.error('行生成エラー', row)
+        return generateAFLS() // 再生成
+      }
+
+      rows.push([...row].sort((a,b)=>a-b))
+    }
+
+    return rows
+
+  }catch(e){
+    console.error('generateAFLS error', e)
+    return generateAFLS() // フォールバック
   }
+}
 
   // 上位35個を使用
   const selected = pool.slice(0,35)
