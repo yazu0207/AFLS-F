@@ -191,14 +191,19 @@ runBtn.addEventListener('click', async () => {
     return {group:`G${i+1}`, numbers:g, max, round}
   })
 
-const table = document.createElement('table')
-table.innerHTML = '<tr><th>Group</th><th>Numbers</th><th>一致最大</th><th>回</th></tr>'
+  const table = document.createElement('table')
+  table.innerHTML = '<tr><th>Group</th><th>Numbers</th><th>一致最大</th><th>回</th></tr>'
 
-latestTableData.forEach(r=>{
-  const tr = document.createElement('tr')
-  tr.innerHTML = `<td>${r.group}</td><td>${r.numbers.join(', ')}</td><td>${r.max}</td><td>${r.round}</td>`
-  table.appendChild(tr)
+  latestTableData.forEach(r=>{
+    const tr = document.createElement('tr')
+    tr.innerHTML = `<td>${r.group}</td><td>${r.numbers.join(', ')}</td><td>${r.max}</td><td>${r.round}</td>`
+    table.appendChild(tr)
+  })
+
+  output.innerHTML = ''
+  output.appendChild(table)
 })
+
 // CSV出力
 exportBtn.addEventListener('click', ()=>{
   if(!latestTableData.length) return alert('データがありません')
