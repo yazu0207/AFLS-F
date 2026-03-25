@@ -12,11 +12,11 @@ button { padding:12px 16px; margin:5px; font-size:16px; border-radius:8px; borde
 @media (max-width: 768px){ .container{ flex-direction:column; gap:10px; } }
 .block{ margin-bottom:20px; }
 table { border-collapse: collapse; margin:10px 0; width:100%; }
-td { width:14%; height:40px; text-align:center; border:1px solid #333; font-size:14px; }
+td, th { border:1px solid #333; padding:6px; text-align:center; }
+th { background:#222 }
 .hot { background:#8b0000 }
 .cold { background:#1c2a44 }
 #heatmap, #output { overflow-x:auto; }
-#output p{ background:#111; padding:8px; border-radius:6px; margin:5px 0; font-size:14px; }
 .status{font-size:12px;color:#9f9;}
 </style>
 </head>
@@ -41,14 +41,14 @@ td { width:14%; height:40px; text-align:center; border:1px solid #333; font-size
   </div>
 </div>
 
-<!-- ボタン配置変更 -->
 <button id="genAfls">5x7自動生成</button>
 <button id="runBtn">再構築＋照合</button>
+<button id="exportCsv">結果CSV出力</button>
 
 <h3>ヒートマップ</h3>
 <div id="heatmap"></div>
 
-<h3>結果</h3>
+<h3>結果（表形式）</h3>
 <div id="output"></div>
 
 <script type="module">
@@ -57,6 +57,7 @@ import { reconstructAFLS } from './afls3_reconstructor.js'
 const aflsInput = document.getElementById('aflsCsv')
 const heatmapInput = document.getElementById('heatmapCsv')
 const pastInput = document.getElementById('pastCsv')
+const exportBtn = document.getElementById('exportCsv')
 
 const aflsStatus = document.getElementById('aflsStatus')
 const heatStatus = document.getElementById('heatStatus')
@@ -67,14 +68,13 @@ const output = document.getElementById('output')
 const runBtn = document.getElementById('runBtn')
 const genAflsBtn = document.getElementById('genAfls')
 
-// 状態表示
+let latestTableData = []
+
 function updateStatus(input, el){
-  if(input.files.length > 0){
-    el.textContent = '読込済'
-  }
+  if(input.files.length > 0){ el.textContent = '読込済' }
 }
 
-[aflsInput, heatmapInput, pastInput].forEach((inp, i)=>{
+[aflsInput, heatmapInput, pastInput].forEach((inp)=>{
   inp.addEventListener('change', ()=>{
     if(inp === aflsInput) updateStatus(inp, aflsStatus)
     if(inp === heatmapInput) updateStatus(inp, heatStatus)
@@ -90,7 +90,6 @@ function readFile(file){
   })
 }
 
-// ★5x7生成ロジック
 function generateAFLS(){
   const pool = [...Array(37).keys()].map(x=>x+1)
   for(let i=pool.length-1;i>0;i--){
@@ -111,24 +110,18 @@ function generateAFLS(){
       rows.push(shuffled.slice(i*7, i*7+7))
     }
 
-    const flat = rows.flat()
-    if(new Set(flat).size !== 35) continue
-
+    if(new Set(rows.flat()).size !== 35) continue
     return rows.map(r => r.sort((a,b)=>a-b))
   }
 }
 
-// ★生成＋自動セット
 genAflsBtn.addEventListener('click', ()=>{
   const rows = generateAFLS()
-
   const header = ['A-data','n1','n2','n3','n4','n5','n6','n7'].join(',')
   const body = rows.map((r,i)=>[`m${i+1}`, ...r].join(',')).join('\n')
   const csv = header + '\n' + body
 
   const blob = new Blob([csv], {type:'text/csv'})
-
-  // ダウンロード
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -136,7 +129,6 @@ genAflsBtn.addEventListener('click', ()=>{
   a.click()
   URL.revokeObjectURL(url)
 
-  // ★inputに自動セット
   const file = new File([blob], 'afls_generated.csv', {type:'text/csv'})
   const dt = new DataTransfer()
   dt.items.add(file)
@@ -152,24 +144,6 @@ function parsePastCSV(text){
     .map(r=>r.split(',').map(v=>Number(v.trim())))
     .filter(r=>r.length>=7)
     .map(r=>r.slice(-7))
-}
-
-function evaluate(groups, pastData){
-  const pastSets = pastData.map(r => new Set(r))
-
-  return groups.map((g, idx)=>{
-    const set = new Set(g)
-    let max = 0
-    let hitRound = ''
-
-    pastSets.forEach((p,i)=>{
-      let cnt = 0
-      set.forEach(n=>{ if(p.has(n)) cnt++ })
-      if(cnt >= max){ max = cnt; hitRound = `第${i+1}回` }
-    })
-
-    return { group: idx+1, numbers: g, max, round: hitRound }
-  })
 }
 
 function renderHeatmap(cells){
@@ -189,51 +163,64 @@ function renderHeatmap(cells){
 }
 
 runBtn.addEventListener('click', async () => {
-  try{
-    if (!aflsInput.files[0]) {
-      alert("AFLS CSVを選択してください")
-      return
-    }
+  if (!aflsInput.files[0]) return alert('AFLS CSVを選択してください')
 
-    const aflsText = await readFile(aflsInput.files[0])
+  const aflsText = await readFile(aflsInput.files[0])
+  let heatText = heatmapInput.files[0] ? await readFile(heatmapInput.files[0]) : loadHeatmap()
+  if(!heatText) return alert('ヒートマップCSVが未設定です')
 
-    let heatText = null
+  const result = reconstructAFLS(aflsText, heatText)
+  renderHeatmap(result.heatmap)
 
-    if(heatmapInput.files[0]){
-      heatText = await readFile(heatmapInput.files[0])
-      saveHeatmap(heatText)
-    } else {
-      heatText = loadHeatmap()
-      if(!heatText){
-        alert("ヒートマップCSVが未設定です")
-        return
-      }
-    }
-
-    const result = reconstructAFLS(aflsText, heatText)
-    renderHeatmap(result.heatmap)
-
-    let evalResult = null
-
-    if(pastInput.files[0]){
-      const pastText = await readFile(pastInput.files[0])
-      const pastData = parsePastCSV(pastText)
-      evalResult = evaluate(result.groups, pastData)
-    }
-
-    output.innerHTML = result.groups.map((g,i)=>{
-      let extra = ''
-      if(evalResult){
-        const e = evalResult[i]
-        extra = `｜一致最大: ${e.max} (${e.round})`
-      }
-      return `<p>G${i+1}: ${g.join(', ')} ${extra}</p>`
-    }).join('')
-
-  }catch(err){
-    console.error(err)
-    alert("エラーが発生しました。コンソールを確認してください")
+  let pastData = []
+  if(pastInput.files[0]){
+    const pastText = await readFile(pastInput.files[0])
+    pastData = parsePastCSV(pastText)
   }
+
+  latestTableData = result.groups.map((g,i)=>{
+    let max = ''
+    let round = ''
+    if(pastData.length){
+      const set = new Set(g)
+      pastData.forEach((p,idx)=>{
+        const cnt = p.filter(n=>set.has(n)).length
+        if(cnt >= max){ max = cnt; round = idx+1 }
+      })
+    }
+    return {group:`G${i+1}`, numbers:g, max, round}
+  })
+
+  const table = document.createElement('table')
+  table.innerHTML = '<tr><th>Group</th><th>Numbers</th><th>一致最大</th><th>回</th></tr>'
+
+  latestTableData.forEach(r=>{
+    const tr = document.createElement('tr')
+    tr.innerHTML = `<td>${r.group}</td><td>${r.numbers.join(', ')}</td><td>${r.max}</td><td>${r.round}</td>`
+    table.appendChild(tr)
+  })
+
+  output.innerHTML = ''
+  output.appendChild(table)
+})
+
+// CSV出力
+exportBtn.addEventListener('click', ()=>{
+  if(!latestTableData.length) return alert('データがありません')
+
+  const header = 'Group,Numbers,Max,Round'
+  const body = latestTableData.map(r=>
+    `${r.group},"${r.numbers.join(' ')}",${r.max},${r.round}`
+  ).join('\n')
+
+  const csv = header + '\n' + body
+  const blob = new Blob([csv], {type:'text/csv'})
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'afls_result.csv'
+  a.click()
+  URL.revokeObjectURL(url)
 })
 </script>
 
