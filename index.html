@@ -191,17 +191,43 @@ runBtn.addEventListener('click', async () => {
     return {group:`G${i+1}`, numbers:g, max, round}
   })
 
-  const table = document.createElement('table')
-  table.innerHTML = '<tr><th>Group</th><th>Numbers</th><th>一致最大</th><th>回</th></tr>'
+ // ★ここから変更（セル分割＋安全版）
+const table = document.createElement('table')
 
-  latestTableData.forEach(r=>{
-    const tr = document.createElement('tr')
-    tr.innerHTML = `<td>${r.group}</td><td>${r.numbers.join(', ')}</td><td>${r.max}</td><td>${r.round}</td>`
-    table.appendChild(tr)
-  })
+// ヘッダ作成
+let headerHTML = '<tr><th>Group</th>'
+for(let i=1;i<=7;i++){
+  headerHTML += `<th>n${i}</th>`
+}
+headerHTML += '<th>一致最大</th><th>回</th></tr>'
+table.innerHTML = headerHTML
 
-  output.innerHTML = ''
-  output.appendChild(table)
+// 行作成（安全対応）
+latestTableData.forEach(r=>{
+  const tr = document.createElement('tr')
+
+  let rowHTML = `<td>${r.group}</td>`
+
+  // ★ここが安全化ポイント
+  if(Array.isArray(r.numbers)){
+    r.numbers.forEach(n=>{
+      rowHTML += `<td>${n}</td>`
+    })
+  } else {
+    console.error('numbers異常:', r.numbers)
+    // フォールバック（最低限表示）
+    rowHTML += `<td colspan="7">データ異常</td>`
+  }
+
+  rowHTML += `<td>${r.max}</td><td>${r.round}</td>`
+
+  tr.innerHTML = rowHTML
+  table.appendChild(tr)
+})
+
+output.innerHTML = ''
+output.appendChild(table)
+// ★ここまで変更
 })
 
 // CSV出力
