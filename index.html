@@ -69,88 +69,12 @@ function readFile(file){
 }
 
 function generateAFLS(){
-  // 1〜37から35個を一度だけ使う
-  const pool = [...Array(37).keys()].map(x=>x+1)
-
-  // シャッフル
-  for(let i=pool.length-1;i>0;i--){
-    const j = Math.floor(Math.random()*(i+1))
-    ;[pool[i],pool[j]]=[pool[j],pool[i]]
-  }
-
-  // 上位35個を使用
-  const selected = pool.slice(0,35)
-
-  // さらにシャッフル（偏り防止）
-  for(let i=selected.length-1;i>0;i--){
-    const j = Math.floor(Math.random()*(i+1))
-    ;[selected[i],selected[j]]=[selected[j],selected[i]]
-  }
-
-  // 5×7に分割
   const rows = []
   for(let i=0;i<5;i++){
-    const row = selected.slice(i*7, i*7+7).sort((a,b)=>a-b)
-    rows.push(row)
-  }
-
-  return rows
-}
-    rows.push(Array.from(nums).sort((a,b)=>a-b))
-  }
-  return rows
-}
-
-    // 35個抽出
-    const selected = pool.slice(0,35)
-
-    // 念のため重複チェック
-    const uniqueCheck = new Set(selected)
-    if(uniqueCheck.size !== 35){
-      throw new Error('重複エラー')
+    const nums = new Set()
+    while(nums.size < 7){
+      nums.add(Math.floor(Math.random()*37)+1)
     }
-
-    // 5×7に分割（ここは安全に）
-    const rows = []
-    for(let i=0;i<5;i++){
-      const start = i*7
-      const row = selected.slice(start, start+7)
-
-      // 万一不足時の保険
-      if(row.length < 7){
-        console.error('行生成エラー', row)
-        return generateAFLS() // 再生成
-      }
-
-      rows.push([...row].sort((a,b)=>a-b))
-    }
-
-    return rows
-
-  }catch(e){
-    console.error('generateAFLS error', e)
-    return generateAFLS() // フォールバック
-  }
-}
-
-  // 上位35個を使用
-  const selected = pool.slice(0,35)
-
-  // さらにシャッフル（偏り防止）
-  for(let i=selected.length-1;i>0;i--){
-    const j = Math.floor(Math.random()*(i+1))
-    ;[selected[i],selected[j]]=[selected[j],selected[i]]
-  }
-
-  // 5×7に分割
-  const rows = []
-  for(let i=0;i<5;i++){
-    const row = selected.slice(i*7, i*7+7).sort((a,b)=>a-b)
-    rows.push(row)
-  }
-
-  return rows
-}
     rows.push(Array.from(nums).sort((a,b)=>a-b))
   }
   return rows
